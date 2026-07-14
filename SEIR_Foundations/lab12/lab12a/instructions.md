@@ -1,4 +1,16 @@
 
+Purpose of soar_response_agent.py
+
+        Receive a threat-finding event from EventBridge.
+        Retrieve the complete finding from DynamoDB.
+        Validate that the finding has not already been processed.
+        Select a deterministic response playbook.
+        Ask Bedrock to create analyst and management summaries.
+        Create an incident record.
+        Publish an SNS notification.
+        Update the original finding’s workflow status.
+
+
 Main responsibilities
 
 1. Retrieve and validate the finding
@@ -33,8 +45,67 @@ Example:
 
 
 SOAR execution record
+Required DynamoDB tables
 
-I would also either create a fourth table or store response history inside the incident table.
+        waf-correlation-findings
+        Primary key: finding_id
+        
+        security-incidents
+        Primary key: incident_id
 
-Required table: soar-executions
+
+
+Required environment variables
+
+        CORRELATION_FINDINGS_TABLE=waf-correlation-findings
+        SECURITY_INCIDENTS_TABLE=security-incidents
+        SNS_TOPIC_ARN=<SNS topic ARN>
+        BEDROCK_MODEL_ID=anthropic.claude-3-haiku-20240307-v1:0
+        ENABLE_BEDROCK=true
+
+Expected EventBridge input
+
+        {
+          "version": "0",
+          "id": "example-event-id",
+          "detail-type": "WAF Threat Finding Created",
+          "source": "seir.waf.correlation",
+          "account": "123456789012",
+          "time": "2026-07-14T20:10:00Z",
+          "region": "us-east-1",
+          "resources": [],
+          "detail": {
+            "finding_id": "7ea476d0-1fea-4ff0-a95a-6377faac5cb4",
+            "severity": "HIGH",
+            "risk_score": 75
+          }
+        }
+
+
+EventBridge events use a standard JSON envelope with fields such as source, detail-type, and detail; this agent uses only detail.finding_id for routing, then retrieves the authoritative finding from DynamoDB.
+
+Required IAM actions
+
+        {
+          "Effect": "Allow",
+          "Action": [
+            "dynamodb:GetItem",
+            "dynamodb:PutItem",
+            "dynamodb:UpdateItem",
+            "sns:Publish",
+            "bedrock:InvokeModel"
+          ],
+          "Resource": "*"
+        }
+
+These map directly to the agent’s responsibilities: retrieve the finding, create the incident, update workflow state, publish the notification, and request informational Bedrock inference. Bedrock model invocation requires bedrock:InvokeModel; DynamoDB’s resource interface supports retrieving, writing, and modifying table items.
+
+
+The deterministic incident ID: INC-<finding_id> makes the workflow idempotent when EventBridge retries the same finding. The conditional DynamoDB write prevents an existing incident from being replaced accidentally. DynamoDB supports conditional puts for this exact create-only pattern.
+
+
+
+
+
+
 
