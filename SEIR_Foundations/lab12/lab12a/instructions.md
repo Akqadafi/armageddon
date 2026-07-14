@@ -98,6 +98,13 @@ Required IAM actions
           "Resource": "*"
         }
 
+How would you implement:
+
+        logs:CreateLogStream
+        logs:PutLogEvents
+        events:PutEvents
+
+
 These map directly to the agent’s responsibilities: retrieve the finding, create the incident, update workflow state, publish the notification, and request informational Bedrock inference. Bedrock model invocation requires bedrock:InvokeModel; DynamoDB’s resource interface supports retrieving, writing, and modifying table items.
 
 
