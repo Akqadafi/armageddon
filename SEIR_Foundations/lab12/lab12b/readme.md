@@ -68,3 +68,34 @@ Required environment variables
 
 bedrock:InvokeModel authorizes the model inference call, while S3 PutObject writes the complete PDF and JSON objects to the bucket.
 
+S3 output layout
+
+The code produces:
+
+
+        chewbacca-s3-123456789012/
+        └── executive-reports/
+            └── 2026/
+                └── 07/
+                    └── 14/
+                        ├── pdf/
+                        │   └── executive-security-20260714T230000Z.pdf
+                        └── json/
+                            └── executive-security-20260714T230000Z.json
+
+Both objects come from the same report document, so the PDF and JSON should contain synchronized facts.
+
+Lambda test event
+
+        {
+          "report_period_hours": 24
+        }
+
+Lambda configuration
+
+        Memory: 1024 MB
+        Timeout: 120 seconds
+        Ephemeral storage: 512 MB
+
+This implementation creates the PDF in memory, so it does not require /tmp. Lambda does provide configurable /tmp storage from 512 MB through 10,240 MB when later revisions need temporary chart images or larger report artifacts.
+
